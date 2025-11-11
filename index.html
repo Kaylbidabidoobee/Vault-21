@@ -17,7 +17,7 @@
 </head>
 <body>
 
-  <h1>Upload → Get QR</h1>
+  <h1>Upload to Get QR</h1>
   <p>Scan the QR – the picture **downloads automatically** (expires in 5 min).</p>
 
   <button id="upload-btn">Upload Image</button>
@@ -46,7 +46,11 @@
           clientAllowedFormats: ['png','jpg','jpeg']
         },
         (error, result) => {
-          if (error) { alert('Upload failed – open console (F12)'); return; }
+          if (error) {
+            console.error("Upload error:", error);
+            alert("Upload failed – check console (F12)");
+            return;
+          }
           if (!result || result.event !== 'success') return;
 
           const info = result.info;
@@ -54,16 +58,15 @@
           const format   = info.format;
           const version  = info.version;
 
-          // Direct Cloudinary URL with attachment flag
+          // CORRECT: fl_attachment BEFORE version
           const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
 
-          // 5-minute expiry hint (for the redirect page countdown)
-          const expires   = Math.floor(Date.now() / 1000) + 300;
+          const expires = Math.floor(Date.now() / 1000) + 300; // 5 min
 
-          // QR points to redirect page, which auto-downloads
+          // FULLY ENCODED URL for redirect page
           const redirectUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expires}`;
 
-          // Show QR
+          // Generate QR
           qrDiv.innerHTML = '';
           new QRCode(qrDiv, {
             text: redirectUrl,
@@ -77,8 +80,8 @@
           resultDiv.classList.remove('hidden');
           resultDiv.innerHTML = `
             <p><strong>Uploaded!</strong></p>
-            <p>Scan QR – image **downloads instantly** (mobile + desktop).</p>
-            <small>Direct link: <a href="${redirectUrl}" target="_blank">test download</a></small>
+            <p>Scan QR – image **downloads instantly**.</p>
+            <small><a href="${redirectUrl}" target="_blank">Test download</a></small>
           `;
 
           uploadBtn.textContent = 'Upload Another';
