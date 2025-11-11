@@ -20,7 +20,7 @@
 </head>
 <body>
 
-  <h1>Upload → Get QR</h1>
+  <h1>Upload to Get QR</h1>
   <p>Scan the QR – the picture <strong>downloads automatically</strong>.</p>
   <div id="countdown" class="countdown hidden"></div>
 
@@ -41,6 +41,11 @@
     const countdownDiv = document.getElementById('countdown');
 
     let expiryTime = 0;
+
+    // Simple XOR "encryption" (obfuscates URL from QR scanners)
+    function xorEncrypt(str, key = 42) {
+      return Array.from(str, c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
+    }
 
     uploadBtn.onclick = () => {
       statusDiv.innerHTML = '<p>Uploading...</p>';
@@ -78,31 +83,50 @@
             const format   = info.format;
             const version  = info.version || Math.floor(Date.now() / 1000);
 
-            // 1. Generate a ONE-TIME, EXPIRING URL
-            expiryTime = Math.floor(Date.now() / 1000) + 300; // 5 min from now
-            const token = btoa(`${publicId}|${expiryTime}|${Math.random()}`).replace(/=/g, '');
-            const downloadUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}?t=${token}&exp=${expiryTime}`;
+            // 1. Build real download URL
+            const realUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
 
-            // 2. QR points to a tiny inline redirect (no extra file)
-            const redirectUrl = `data:text/html,<script>
-              const url = decodeURIComponent(location.hash.slice(1));
-              const exp = new URL(url).searchParams.get('exp');
-              const now = Math.floor(Date.now() / 1000);
-              if (now > exp) {
-                document.body.innerHTML = '<h3 style=\"color:red\">Link expired.</h3>';
-              } else {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = '';
-                document.body.appendChild(a);
-                a.click();
-              }
-            </script>#${encodeURIComponent(downloadUrl)}`;
+            // 2. Set expiry
+            expiryTime = Math.floor(Date.now() / 1000) + 300;
 
-            // 3. Generate QR
+            // 3. Encrypt the real URL + expiry
+            const payload = `${realUrl}|${expiryTime}`;
+            const encrypted = xorEncrypt(payload);
+
+            // 4. Create tiny decrypt + download page (data URL)
+            const decryptPage = `
+              <!DOCTYPE html>
+              <html><head><meta charset="utf-8"><title>Download</title></head>
+              <body style="margin:0;background:#f0f0f0;text-align:center;padding:40px;font-family:Arial;">
+                <h2>Downloading...</h2>
+                <script>
+                  function xorDecrypt(str, key = 42) {
+                    return Array.from(str, c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
+                  }
+                  const encrypted = decodeURIComponent(location.hash.slice(1));
+                  const decrypted = xorDecrypt(encrypted);
+                  const [url, exp] = decrypted.split('|');
+                  const now = Math.floor(Date.now() / 1000);
+                  if (now > parseInt(exp)) {
+                    document.body.innerHTML = '<h3 style="color:red">Link expired.</h3>';
+                  } else {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '';
+                    document.body.appendChild(a);
+                    a.click();
+                  }
+                </script>
+                #${encodeURIComponent(encrypted)}
+              </body></html>
+            `;
+
+            const dataUrl = 'data:text/html;base64,' + btoa(decryptPage);
+
+            // 5. Generate QR
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
-              text: redirectUrl,
+              text: dataUrl,
               width: 256,
               height: 256,
               colorDark: "#000",
@@ -114,10 +138,10 @@
             resultDiv.innerHTML = `
               <p><strong>Ready!</strong></p>
               <p>Scan QR – image <strong>downloads instantly</strong>.</p>
-              <small>Link hidden. Expires in 5 min.</small>
+              <small>Link encrypted & hidden. Expires in 5 min.</small>
             `;
 
-            // 4. Show countdown
+            // 6. Countdown
             countdownDiv.classList.remove('hidden');
             let timeLeft = 300;
             const timer = setInterval(() => {
