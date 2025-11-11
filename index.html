@@ -13,6 +13,8 @@
     #qr-code {margin:30px auto;padding:20px;background:#fff;border-radius:10px;display:inline-block;}
     #result {margin-top:20px;font-size:14px;color:#333;}
     .hidden {display:none;}
+    .status {margin:10px 0;color:#333;}
+    .error {color:red;font-weight:bold;}
   </style>
 </head>
 <body>
@@ -21,6 +23,7 @@
   <p>Scan the QR – the picture <strong>downloads automatically</strong> (expires in 5 min).</p>
 
   <button id="upload-btn">Upload Image</button>
+  <div id="status" class="status"></div>
 
   <div id="qr-code" class="hidden"></div>
   <div id="result" class="hidden"></div>
@@ -28,13 +31,17 @@
   <script>
     const CLOUD_NAME    = 'djgaxcy0r';
     const UPLOAD_PRESET = 'unsigned_photobooth';
-    const SITE_URL      = 'https://vault21.netlify.app';
 
     const uploadBtn = document.getElementById('upload-btn');
     const qrDiv     = document.getElementById('qr-code');
     const resultDiv = document.getElementById('result');
+    const statusDiv = document.getElementById('status');
 
     uploadBtn.onclick = () => {
+      statusDiv.innerHTML = '<p>Uploading...</p>';
+      qrDiv.classList.add('hidden');
+      resultDiv.classList.add('hidden');
+
       cloudinary.openUploadWidget(
         {
           cloudName: CLOUD_NAME,
@@ -48,47 +55,47 @@
         (error, result) => {
           if (error) {
             console.error("Upload error:", error);
-            alert("Upload failed. Check console (F12).");
+            statusDiv.innerHTML = '<p class="error">Upload failed. Check console (F12).</p>';
             return;
           }
 
-          if (!result || result.event !== 'success') {
-            console.log("No success event:", result);
-            return;
+          if (result.event === 'success') {
+            statusDiv.innerHTML = '<p>Generating QR...</p>';
+
+            const info = result.info;
+            if (!info?.public_id) {
+              statusDiv.innerHTML = '<p class="error">No image data received.</p>';
+              return;
+            }
+
+            const publicId = info.public_id;
+            const format   = info.format;
+            const version  = info.version || Math.floor(Date.now() / 1000);
+
+            // DIRECT DOWNLOAD URL (fl_attachment BEFORE version)
+            const downloadUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
+
+            // Generate QR
+            qrDiv.innerHTML = '';
+            new QRCode(qrDiv, {
+              text: downloadUrl,
+              width: 256,
+              height: 256,
+              colorDark: "#000",
+              colorLight: "#fff"
+            });
+
+            qrDiv.classList.remove('hidden');
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = `
+              <p><strong>Ready!</strong></p>
+              <p>Scan QR – image <strong>downloads instantly</strong>.</p>
+              <small><a href="${downloadUrl}" target="_blank">Test download</a></small>
+            `;
+
+            statusDiv.innerHTML = '';
+            uploadBtn.textContent = 'Upload Another';
           }
-
-          const info = result.info;
-          const publicId = info.public_id;
-          const format   = info.format;
-          const version  = info.version;
-
-          // CORRECT: fl_attachment BEFORE version
-          const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
-
-          const expires = Math.floor(Date.now() / 1000) + 300;
-
-          // FULLY ENCODED URL
-          const redirectUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expires}`;
-
-          // Generate QR
-          qrDiv.innerHTML = '';
-          new QRCode(qrDiv, {
-            text: redirectUrl,
-            width: 256,
-            height: 256,
-            colorDark: "#000",
-            colorLight: "#fff"
-          });
-
-          qrDiv.classList.remove('hidden');
-          resultDiv.classList.remove('hidden');
-          resultDiv.innerHTML = `
-            <p><strong>Uploaded!</strong></p>
-            <p>Scan QR – image <strong>downloads instantly</strong>.</p>
-            <small><a href="${redirectUrl}" target="_blank">Test download</a></small>
-          `;
-
-          uploadBtn.textContent = 'Upload Another';
         }
       );
     };
