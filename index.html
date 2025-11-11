@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>QR Photo Booth</title>
+  <title>QR Photo Booth – Auto Download</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
   <style>
     body {font-family:Arial,sans-serif;max-width:600px;margin:40px auto;padding:20px;text-align:center;background:#f4f4f4;}
-    #upload-btn {margin:20px 0;padding:12px 24px;font-size:16px;background:#007bff;color:white;border:none;border-radius:6px;cursor:pointer;}
+    #upload-btn {margin:20px 0;padding:12px 24px;font-size:16px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;}
     #upload-btn:hover {background:#0056b3;}
-    #qr-code {margin:30px auto;padding:20px;background:white;border-radius:10px;display:inline-block;}
+    #qr-code {margin:30px auto;padding:20px;background:#fff;border-radius:10px;display:inline-block;}
     #result {margin-top:20px;font-size:14px;color:#333;}
     .hidden {display:none;}
   </style>
@@ -18,7 +18,7 @@
 <body>
 
   <h1>Upload → Get QR</h1>
-  <p>Scan to download (expires in 5 min)</p>
+  <p>Scan the QR – the picture **downloads automatically** (expires in 5 min).</p>
 
   <button id="upload-btn">Upload Image</button>
 
@@ -26,12 +26,11 @@
   <div id="result" class="hidden"></div>
 
   <script>
-    const CLOUD_NAME = 'djgaxcy0r';
+    const CLOUD_NAME    = 'djgaxcy0r';
     const UPLOAD_PRESET = 'unsigned_photobooth';
-    const SITE_URL = 'https://vault21.netlify.app';
 
     const uploadBtn = document.getElementById('upload-btn');
-    const qrDiv = document.getElementById('qr-code');
+    const qrDiv     = document.getElementById('qr-code');
     const resultDiv = document.getElementById('result');
 
     uploadBtn.onclick = () => {
@@ -39,38 +38,35 @@
         {
           cloudName: CLOUD_NAME,
           uploadPreset: UPLOAD_PRESET,
-          sources: ['local', 'camera'],
+          sources: ['local','camera'],
           multiple: false,
           cropping: false,
           folder: 'qr-downloads',
           clientAllowedFormats: ['png','jpg','jpeg']
         },
         (error, result) => {
-          if (error) {
-            console.error("Upload error:", error);
-            alert("Upload failed. Check console (F12).");
-            return;
-          }
+          if (error) { alert('Upload failed – open console (F12)'); return; }
           if (!result || result.event !== 'success') return;
 
           const info = result.info;
           const publicId = info.public_id;
-          const format = info.format;
-          const version = info.version;
+          const format   = info.format;
+          const version  = info.version;
 
-          // DIRECT, SHORT URL (no Base64)
-          const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/v${version}/${publicId}.${format}`;
+          // 1. Direct Cloudinary URL
+          const baseUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/v${version}/${publicId}.${format}`;
 
-          // 5-minute expiry timestamp
-          const expiryTime = Math.floor(Date.now() / 1000) + 300;
+          // 2. Force download + 5‑minute expiry hint
+          const expires   = Math.floor(Date.now() / 1000) + 300; // 5 min
+          const downloadUrl = `${baseUrl}?fl=attachment&exp=${expires}`;
 
-          // Safe URL encoding
-          const downloadPageUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expiryTime}`;
+          // 3. Encode safely for QR
+          const qrText = downloadUrl;
 
-          // Generate QR
+          // 4. Show QR
           qrDiv.innerHTML = '';
           new QRCode(qrDiv, {
-            text: downloadPageUrl,
+            text: qrText,
             width: 256,
             height: 256,
             colorDark: "#000",
@@ -81,8 +77,8 @@
           resultDiv.classList.remove('hidden');
           resultDiv.innerHTML = `
             <p><strong>Uploaded!</strong></p>
-            <p>Scan QR to download</p>
-            <small><a href="${downloadPageUrl}" target="_blank">Open in browser</a></small>
+            <p>Scan QR – image **downloads instantly**.</p>
+            <small>Direct link: <a href="${downloadUrl}" target="_blank">test download</a></small>
           `;
 
           uploadBtn.textContent = 'Upload Another';
