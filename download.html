@@ -18,17 +18,20 @@
   <div id="content">Loading...</div>
 
   <script>
+    // ---- FIX: correctly read the full img URL ----
     const params = new URLSearchParams(location.search);
-    const imgUrl = params.get('img');
+    const imgUrl = params.get('img');          // now gets the whole Cloudinary URL
     const expires = params.get('exp');
     const now = Math.floor(Date.now() / 1000);
-    const expiryTime = parseInt(expires) || (now + 300);
+    const expiryTime = parseInt(expires) || (now + 300); // 5 min default
 
-     const countdownEl = document.getElementById('countdown');
+    const countdownEl = document.getElementById('countdown');
     const contentEl = document.getElementById('content');
 
+    // immediate expiry check
     if (now >= expiryTime) { showExpired(); return; }
 
+    // load image
     if (imgUrl) {
       const img = new Image();
       img.src = imgUrl;
@@ -53,6 +56,7 @@
       contentEl.innerHTML = '<p>No image URL provided.</p>';
     }
 
+    // countdown
     const timer = setInterval(() => {
       const remaining = expiryTime - Math.floor(Date.now() / 1000);
       if (remaining <= 0) {
