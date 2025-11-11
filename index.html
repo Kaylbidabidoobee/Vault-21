@@ -52,121 +52,119 @@
       resultDiv.classList.add('hidden');
       countdownDiv.classList.add('hidden');
 
-      try {
-        cloudinary.openUploadWidget(
-          {
-            cloudName: CLOUD_NAME,
-            uploadPreset: UPLOAD_PRESET,
-            sources: ['local', 'camera'],
-            multiple: false,
-            cropping: false,
-            folder: 'qr-downloads',
-            clientAllowedFormats: ['png','jpg','jpeg']
-          },
-          (error, result) => {
-            if (error) {
-              console.error("Cloudinary error:", error);
-              statusDiv.innerHTML = '<p class="error">Upload failed. Check console (F12).</p>';
+      // Ensure widget is loaded
+      if (!window.cloudinary) {
+        statusDiv.innerHTML = '<p class="error">Widget failed to load. Refresh page.</p>';
+        return;
+      }
+
+      cloudinary.openUploadWidget(
+        {
+          cloudName: CLOUD_NAME,
+          uploadPreset: UPLOAD_PRESET,
+          sources: ['local', 'camera'],
+          multiple: false,
+          cropping: false,
+          folder: 'qr-downloads',
+          clientAllowedFormats: ['png','jpg','jpeg']
+        },
+        (error, result) => {
+          if (error) {
+            statusDiv.innerHTML = `<p class="error">Upload error: ${error.message || 'Try again'}</p>`;
+            return;
+          }
+
+          if (result.event === 'success') {
+            statusDiv.textContent = 'Generating QR...';
+
+            const info = result.info;
+            if (!info?.public_id) {
+              statusDiv.innerHTML = '<p class="error">No image data.</p>';
               return;
             }
 
-            if (result.event === 'success') {
-              statusDiv.textContent = 'Upload complete. Generating QR...';
+            const publicId = info.public_id;
+            const format   = info.format;
+            const version  = info.version || Math.floor(Date.now() / 1000);
 
-              const info = result.info;
-              if (!info?.public_id) {
-                statusDiv.innerHTML = '<p class="error">No image data.</p>';
-                return;
-              }
+            const realUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
+            expiryTime = Math.floor(Date.now() / 1000) + 300;
 
-              const publicId = info.public_id;
-              const format   = info.format;
-              const version  = info.version || Math.floor(Date.now() / 1000);
+            const payload = `${realUrl}|${expiryTime}`;
+            const encrypted = xorCrypt(payload);
 
-              const realUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
-              expiryTime = Math.floor(Date.now() / 1000) + 300;
-
-              const payload = `${realUrl}|${expiryTime}`;
-              const encrypted = xorCrypt(payload);
-
-              const decryptPage = `
-                <!DOCTYPE html>
-                <html><head><meta charset="utf-8"><title>Download</title></head>
-                <body style="margin:0;background:#f0f0f0;text-align:center;padding:40px;font-family:Arial;">
-                  <h2>Downloading...</h2>
-                  <script>
-                    function xorCrypt(str, key = 42) {
-                      return Array.from(str, c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
-                    }
-                    try {
-                      const encrypted = decodeURIComponent(location.hash.slice(1));
-                      const decrypted = xorCrypt(encrypted);
-                      const [url, expStr] = decrypted.split('|');
-                      const exp = parseInt(expStr);
-                      const now = Math.floor(Date.now() / 1000);
-                      if (isNaN(exp) || now > exp) {
-                        document.body.innerHTML = '<h3 style="color:red">Link expired.</h3>';
-                      } else {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = '';
-                        document.body.appendChild(a);
-                        a.click();
-                      }
-                    } catch(e) {
-                      document.body.innerHTML = '<h3 style="color:red">Invalid link.</h3>';
-                    }
-                  </script>
-                  #${encodeURIComponent(encrypted)}
-                </body></html>
-              `;
-
-              const dataUrl = 'data:text/html;base64,' + btoa(decryptPage);
-
-              qrDiv.innerHTML = '';
-              new QRCode(qrDiv, {
-                text: dataUrl,
-                width: 256,
-                height: 256,
-                colorDark: "#000",
-                colorLight: "#fff"
-              });
-
-              qrDiv.classList.remove('hidden');
-              resultDiv.classList.remove('hidden');
-              resultDiv.innerHTML = `
-                <p><strong>Ready!</strong></p>
-                <p>Scan QR – image <strong>downloads instantly</strong>.</p>
-                <small>Link encrypted. Expires in 5 min.</small>
-              `;
-
-              countdownDiv.classList.remove('hidden');
-              let timeLeft = 300;
-              const timer = setInterval(() => {
-                if (timeLeft <= 0) {
-                  clearInterval(timer);
-                  countdownDiv.textContent = 'QR Expired';
-                  qrDiv.innerHTML = '';
-                  qrDiv.classList.add('hidden');
-                } else {
-                  const m = Math.floor(timeLeft / 60);
-                  const s = timeLeft % 60;
-                  countdownDiv.textContent = `Expires in: ${m}:${s.toString().padStart(2, '0')}`;
-                  timeLeft--;
-                }
-              }, 1000);
-
-              statusDiv.textContent = '';
-              uploadBtn.textContent = 'Upload Another';
-            }
-          }
-        );
-      } catch (e) {
-        console.error("Widget open failed:", e);
-        statusDiv.innerHTML = '<p class="error">Failed to open uploader. Try again.</p>';
+            const decryptPage = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Download</title></head>
+<body style="margin:0;background:#f0f0f0;text-align:center;padding:40px;font-family:Arial;">
+  <h2>Downloading...</h2>
+  <script>
+    function xorCrypt(str, key = 42) {
+      return Array.from(str, c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
+    }
+    try {
+      const encrypted = decodeURIComponent(location.hash.slice(1));
+      const decrypted = xorCrypt(encrypted);
+      const [url, expStr] = decrypted.split('|');
+      const exp = parseInt(expStr);
+      const now = Math.floor(Date.now() / 1000);
+      if (isNaN(exp) || now > exp) {
+        document.body.innerHTML = '<h3 style="color:red">Link expired.</h3>';
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
       }
+    } catch(e) {
+      document.body.innerHTML = '<h3 style="color:red">Invalid link.</h3>';
+    }
+  </script>
+  #${encodeURIComponent(encrypted)}
+</body></html>`;
+
+            const dataUrl = 'data:text/html;base64,' + btoa(decryptPage);
+
+            qrDiv.innerHTML = '';
+            new QRCode(qrDiv, {
+              text: dataUrl,
+              width: 256,
+              height: 256,
+              colorDark: "#000",
+              colorLight: "#fff"
+            });
+
+            qrDiv.classList.remove('hidden');
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = `
+              <p><strong>Ready!</strong></p>
+              <p>Scan QR – image <strong>downloads instantly</strong>.</p>
+              <small>Link encrypted. Expires in 5 min.</small>
+            `;
+
+            countdownDiv.classList.remove('hidden');
+            let timeLeft = 300;
+            const timer = setInterval(() => {
+              if (timeLeft <= 0) {
+                clearInterval(timer);
+                countdownDiv.textContent = 'QR Expired';
+                qrDiv.innerHTML = '';
+                qrDiv.classList.add('hidden');
+              } else {
+                const m = Math.floor(timeLeft / 60);
+                const s = timeLeft % 60;
+                countdownDiv.textContent = `Expires in: ${m}:${s.toString().padStart(2, '0')}`;
+                timeLeft--;
+              }
+            }, 1000);
+
+            statusDiv.textContent = '';
+            uploadBtn.textContent = 'Upload Another';
+          }
+        }
+      );
     };
   </script>
 
 </body>
-</html>
+              </html>
