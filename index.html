@@ -31,6 +31,7 @@
   <script>
     const CLOUD_NAME    = 'djgaxcy0r';
     const UPLOAD_PRESET = 'unsigned_photobooth';
+    const SITE_URL      = 'https://vault21.netlify.app';
 
     const uploadBtn = document.getElementById('upload-btn');
     const qrDiv     = document.getElementById('qr-code');
@@ -72,13 +73,16 @@
             const format   = info.format;
             const version  = info.version || Math.floor(Date.now() / 1000);
 
-            // DIRECT DOWNLOAD URL (fl_attachment BEFORE version)
-            const downloadUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
+            // CORRECT: fl_attachment BEFORE version
+            const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
 
-            // Generate QR
+            const expires = Math.floor(Date.now() / 1000) + 300;
+
+            const redirectUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expires}`;
+
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
-              text: downloadUrl,
+              text: redirectUrl,
               width: 256,
               height: 256,
               colorDark: "#000",
@@ -90,7 +94,7 @@
             resultDiv.innerHTML = `
               <p><strong>Ready!</strong></p>
               <p>Scan QR – image <strong>downloads instantly</strong>.</p>
-              <small><a href="${downloadUrl}" target="_blank">Test download</a></small>
+              <small><a href="${redirectUrl}" target="_blank">Test download</a></small>
             `;
 
             statusDiv.innerHTML = '';
