@@ -18,20 +18,25 @@
   <div id="content">Loading...</div>
 
   <script>
-    // ---- FIX: correctly read the full img URL ----
     const params = new URLSearchParams(location.search);
-    const imgUrl = params.get('img');          // now gets the whole Cloudinary URL
+    const encodedImg = params.get('i');  // Base64 encoded
     const expires = params.get('exp');
     const now = Math.floor(Date.now() / 1000);
-    const expiryTime = parseInt(expires) || (now + 300); // 5 min default
+    const expiryTime = parseInt(expires) || (now + 300);
 
     const countdownEl = document.getElementById('countdown');
     const contentEl = document.getElementById('content');
 
-    // immediate expiry check
     if (now >= expiryTime) { showExpired(); return; }
 
-    // load image
+    let imgUrl = '';
+    try {
+      imgUrl = encodedImg ? atob(encodedImg) : '';
+    } catch (e) {
+      contentEl.innerHTML = '<p>Invalid image link.</p>';
+      return;
+    }
+
     if (imgUrl) {
       const img = new Image();
       img.src = imgUrl;
@@ -53,10 +58,9 @@
       };
       img.onerror = () => contentEl.innerHTML = '<p>Failed to load image.</p>';
     } else {
-      contentEl.innerHTML = '<p>No image URL provided.</p>';
+      contentEl.innerHTML = '<p>No image provided.</p>';
     }
 
-    // countdown
     const timer = setInterval(() => {
       const remaining = expiryTime - Math.floor(Date.now() / 1000);
       if (remaining <= 0) {
@@ -73,7 +77,7 @@
       document.body.classList.add('expired');
       countdownEl.textContent = 'Link Expired';
       contentEl.innerHTML = `<p style="color:#c62828;font-weight:bold;">
-        This link has expired and the image is no longer accessible.
+        This link has expired.
       </p>`;
     }
   </script>

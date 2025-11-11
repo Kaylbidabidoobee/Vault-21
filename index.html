@@ -25,7 +25,6 @@
   <div id="result" class="hidden"></div>
 
   <script>
-    // YOUR CONFIG (already filled in)
     const CLOUD_NAME = 'djgaxcy0r';
     const UPLOAD_PRESET = 'unsigned_photobooth';
     const SITE_URL = 'https://vault21.netlify.app';
@@ -52,9 +51,10 @@
             const version  = result.info.version;
             const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/v${version}/${publicId}.${format}`;
 
-            // 5-minute expiry
-            const expiryTime = Math.floor(Date.now() / 1000) + 300;
-            const downloadPageUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expiryTime}`;
+            // BASE64 ENCODE IMAGE URL (prevents URL cutoff)
+            const safeImg = btoa(imageUrl);
+            const expiryTime = Math.floor(Date.now() / / 1000) + 300;
+            const downloadPageUrl = `${SITE_URL}/download.html?i=${safeImg}&exp=${expiryTime}`;
 
             // Generate QR
             qrDiv.innerHTML = '';
