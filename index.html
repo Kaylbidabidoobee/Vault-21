@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Image to Cloudinary to QR to Download</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
+  <style>
+    body {font-family:Arial,sans-serif;max-width:600px;margin:40px auto;padding:20px;text-align:center;background:#f4f4f4;}
+    #upload-btn {margin:20px 0;padding:12px 24px;font-size:16px;cursor:pointer;}
+    #qr-code {margin:30px auto;padding:20px;background:white;border-radius:10px;display:inline-block;}
+    #result {margin-top:20px;font-size:14px;color:#333;}
+    .hidden {display:none;}
+  </style>
+</head>
+<body>
+
+  <h1>Upload Image to Get QR Code</h1>
+  <p>Scan the QR code to download the image (expires in 5 minutes).</p>
+
+  <button id="upload-btn">Upload Image</button>
+
+  <div id="qr-code" class="hidden"></div>
+  <div id="result" class="hidden"></div>
+
+  <script>
+    // YOUR CONFIG (already filled in)
+    const CLOUD_NAME = 'djgaxcy0r';
+    const UPLOAD_PRESET = 'unsigned_photobooth';
+    const SITE_URL = 'https://vault21.netlify.app';
+
+    const uploadBtn = document.getElementById('upload-btn');
+    const qrDiv = document.getElementById('qr-code');
+    const resultDiv = document.getElementById('result');
+
+    uploadBtn.onclick = () => {
+      cloudinary.openUploadWidget(
+        {
+          cloudName: CLOUD_NAME,
+          uploadPreset: UPLOAD_PRESET,
+          sources: ['local', 'camera', 'url'],
+          multiple: false,
+          cropping: false,
+          folder: 'qr-downloads',
+          clientAllowedFormats: ['png','jpg','jpeg','gif','webp']
+        },
+        (error, result) => {
+          if (!error && result && result.event === 'success') {
+            const publicId = result.info.public_id;
+            const format   = result.info.format;
+            const version  = result.info.version;
+            const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/v${version}/${publicId}.${format}`;
+
+            // 5-minute expiry
+            const expiryTime = Math.floor(Date.now() / 1000) + 300;
+            const downloadPageUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expiryTime}`;
+
+            // Generate QR
+            qrDiv.innerHTML = '';
+            new QRCode(qrDiv, {
+              text: downloadPageUrl,
+              width: 256,
+              height: 256,
+              colorDark: "#000",
+              colorLight: "#fff"
+            });
+
+            qrDiv.classList.remove('hidden');
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = `
+              <p><strong>Image uploaded!</strong></p>
+              <p>Scan QR to download (expires in 5 min).</p>
+              <small>Link: <a href="${downloadPageUrl}" target="_blank">${downloadPageUrl}</a></small>
+            `;
+
+            uploadBtn.textContent = 'Upload Another';
+          }
+        }
+      );
+    };
+  </script>
+
+</body>
+</html>
