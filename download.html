@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Download Image (Temporary)</title>
+  <title>Download Image</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
-    body {text-align:center;font-family:Arial,sans-serif;padding:40px;background:#f9f9f9;transition:background .5s;}
+    body {text-align:center;font-family:Arial,sans-serif;padding:40px;background:#f9f9f9;}
     .expired {background:#ffebee;}
     img {max-width:100%;max-height:60vh;margin:20px 0;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.1);}
     button {padding:12px 24px;font-size:18px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;}
@@ -19,7 +19,7 @@
 
   <script>
     const params = new URLSearchParams(location.search);
-    const encodedImg = params.get('i');  // Base64 encoded
+    const encodedImg = params.get('i');
     const expires = params.get('exp');
     const now = Math.floor(Date.now() / 1000);
     const expiryTime = parseInt(expires) || (now + 300);
@@ -33,34 +33,38 @@
     try {
       imgUrl = encodedImg ? atob(encodedImg) : '';
     } catch (e) {
-      contentEl.innerHTML = '<p>Invalid image link.</p>';
+      contentEl.innerHTML = '<p>Invalid link.</p>';
       return;
     }
 
-    if (imgUrl) {
-      const img = new Image();
-      img.src = imgUrl;
-      img.onload = () => {
-        contentEl.innerHTML = '';
-        contentEl.appendChild(img);
-
-        const btn = document.createElement('button');
-        btn.textContent = 'Download Image';
-        btn.onclick = () => {
-          const a = document.createElement('a');
-          a.href = imgUrl;
-          a.download = imgUrl.split('/').pop().split('?')[0];
-          a.click();
-        };
-        contentEl.appendChild(document.createElement('br'));
-        contentEl.appendChild(document.createElement('br'));
-        contentEl.appendChild(btn);
-      };
-      img.onerror = () => contentEl.innerHTML = '<p>Failed to load image.</p>';
-    } else {
-      contentEl.innerHTML = '<p>No image provided.</p>';
+    if (!imgUrl) {
+      contentEl.innerHTML = '<p>No image.</p>';
+      return;
     }
 
+    const img = new Image();
+    img.src = imgUrl;
+    img.onload = () => {
+      contentEl.innerHTML = '';
+      contentEl.appendChild(img);
+
+      const btn = document.createElement('button');
+      btn.textContent = 'Download Image';
+      btn.onclick = () => {
+        const a = document.createElement('a');
+        a.href = imgUrl;
+        a.download = imgUrl.split('/').pop().split('?')[0];
+        a.click();
+      };
+      contentEl.appendChild(document.createElement('br'));
+      contentEl.appendChild(document.createElement('br'));
+      contentEl.appendChild(btn);
+    };
+    img.onerror = () => {
+      contentEl.innerHTML = '<p>Failed to load image.</p>';
+    };
+
+    // Countdown
     const timer = setInterval(() => {
       const remaining = expiryTime - Math.floor(Date.now() / 1000);
       if (remaining <= 0) {
