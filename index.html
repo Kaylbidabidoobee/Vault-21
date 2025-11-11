@@ -3,18 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Content-Security-Policy"
+        content="
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://upload-widget.cloudinary.com https://widget.cloudinary.com;
+          style-src  'self' 'unsafe-inline' https://upload-widget.cloudinary.com https://widget.cloudinary.com;
+          img-src    * data: blob:;
+          frame-src  https://widget.cloudinary.com;
+          connect-src https://res.cloudinary.com https://api.cloudinary.com;
+        ">
   <title>QR Photo Booth</title>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
+
   <style>
-    body {font-family:Arial,sans-serif;max-width:600px;margin:40px auto;padding:20px;text-align:center;background:#f4f4f4;}
-    #upload-btn {margin:20px 0;padding:12px 24px;font-size:16px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;}
-    #upload-btn:hover {background:#0056b3;}
-    #qr-code {margin:30px auto;padding:20px;background:#fff;border-radius:10px;display:inline-block;}
-    #result {margin-top:20px;font-size:14px;color:#333;}
-    .hidden {display:none;}
-    .status {margin:10px 0;color:#333;}
-    .error {color:red;font-weight:bold;}
+    body{font-family:Arial,sans-serif;max-width:600px;margin:40px auto;padding:20px;text-align:center;background:#f4f4f4;}
+    #upload-btn{margin:20px 0;padding:12px 24px;font-size:16px;background:#007bff;color:#fff;border:none;border-radius:6px;cursor:pointer;}
+    #upload-btn:hover{background:#0056b3;}
+    #qr-code{margin:30px auto;padding:20px;background:#fff;border-radius:10px;display:inline-block;}
+    .hidden{display:none;}
+    .status{margin:10px 0;color:#333;}
+    .error{color:red;font-weight:bold;}
   </style>
 </head>
 <body>
@@ -29,9 +39,10 @@
   <div id="result" class="hidden"></div>
 
   <script>
+    // ==== CONFIG ==== //
     const CLOUD_NAME    = 'djgaxcy0r';
     const UPLOAD_PRESET = 'unsigned_photobooth';
-    const SITE_URL      = 'https://vault21.netlify.app';
+    // No download.html needed – QR points directly to Cloudinary attachment URL
 
     const uploadBtn = document.getElementById('upload-btn');
     const qrDiv     = document.getElementById('qr-code');
@@ -55,34 +66,32 @@
         },
         (error, result) => {
           if (error) {
-            console.error("Upload error:", error);
-            statusDiv.innerHTML = '<p class="error">Upload failed. Check console (F12).</p>';
+            console.error(error);
+            statusDiv.innerHTML = '<p class="error">Upload failed – open console (F12).</p>';
             return;
           }
 
           if (result.event === 'success') {
             statusDiv.innerHTML = '<p>Generating QR...</p>';
 
-            const info = result.info;
-            if (!info?.public_id) {
-              statusDiv.innerHTML = '<p class="error">No image data received.</p>';
-              return;
-            }
-
+            const info     = result.info;
             const publicId = info.public_id;
             const format   = info.format;
             const version  = info.version || Math.floor(Date.now() / 1000);
 
-            // CORRECT: fl_attachment BEFORE version
-            const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
+            // Direct Cloudinary attachment URL (forces download)
+            const attachmentUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
 
+            // Expire in 5 minutes
             const expires = Math.floor(Date.now() / 1000) + 300;
 
-            const redirectUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expires}`;
+            // Build final URL with expiry (Cloudinary will still serve it, but we can show a nice message if needed)
+            const finalUrl = `${attachmentUrl}?exp=${expires}`;
 
+            // Generate QR
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
-              text: redirectUrl,
+              text: finalUrl,
               width: 256,
               height: 256,
               colorDark: "#000",
@@ -94,7 +103,7 @@
             resultDiv.innerHTML = `
               <p><strong>Ready!</strong></p>
               <p>Scan QR – image <strong>downloads instantly</strong>.</p>
-              <small><a href="${redirectUrl}" target="_blank">Test download</a></small>
+              <small><a href="${finalUrl}" target="_blank">Test download</a></small>
             `;
 
             statusDiv.innerHTML = '';
@@ -104,6 +113,5 @@
       );
     };
   </script>
-
 </body>
 </html>
