@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>QR Photo Booth – Auto Download</title>
+  <title>QR Photo Booth</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
   <style>
@@ -17,7 +17,7 @@
 </head>
 <body>
 
-  <h1>Upload to Get QR</h1>
+  <h1>Upload → Get QR</h1>
   <p>Scan the QR – the picture **downloads automatically** (expires in 5 min).</p>
 
   <button id="upload-btn">Upload Image</button>
@@ -39,7 +39,7 @@
         {
           cloudName: CLOUD_NAME,
           uploadPreset: UPLOAD_PRESET,
-          sources: ['local','camera'],
+          sources: ['local', 'camera'],
           multiple: false,
           cropping: false,
           folder: 'qr-downloads',
@@ -48,7 +48,7 @@
         (error, result) => {
           if (error) {
             console.error("Upload error:", error);
-            alert("Upload failed – check console (F12)");
+            alert("Upload failed. Check console (F12).");
             return;
           }
           if (!result || result.event !== 'success') return;
@@ -63,7 +63,7 @@
 
           const expires = Math.floor(Date.now() / 1000) + 300; // 5 min
 
-          // FULLY ENCODED URL for redirect page
+          // FULLY ENCODED REDIRECT URL
           const redirectUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expires}`;
 
           // Generate QR
