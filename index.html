@@ -28,6 +28,7 @@
   <script>
     const CLOUD_NAME    = 'djgaxcy0r';
     const UPLOAD_PRESET = 'unsigned_photobooth';
+    const SITE_URL      = 'https://vault21.netlify.app';
 
     const uploadBtn = document.getElementById('upload-btn');
     const qrDiv     = document.getElementById('qr-code');
@@ -53,20 +54,19 @@
           const format   = info.format;
           const version  = info.version;
 
-          // 1. Direct Cloudinary URL
-          const baseUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/v${version}/${publicId}.${format}`;
+          // Direct Cloudinary URL with attachment flag
+          const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
 
-          // 2. Force download + 5‑minute expiry hint
-          const expires   = Math.floor(Date.now() / 1000) + 300; // 5 min
-          const downloadUrl = `${baseUrl}?fl=attachment&exp=${expires}`;
+          // 5-minute expiry hint (for the redirect page countdown)
+          const expires   = Math.floor(Date.now() / 1000) + 300;
 
-          // 3. Encode safely for QR
-          const qrText = downloadUrl;
+          // QR points to redirect page, which auto-downloads
+          const redirectUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expires}`;
 
-          // 4. Show QR
+          // Show QR
           qrDiv.innerHTML = '';
           new QRCode(qrDiv, {
-            text: qrText,
+            text: redirectUrl,
             width: 256,
             height: 256,
             colorDark: "#000",
@@ -77,8 +77,8 @@
           resultDiv.classList.remove('hidden');
           resultDiv.innerHTML = `
             <p><strong>Uploaded!</strong></p>
-            <p>Scan QR – image **downloads instantly**.</p>
-            <small>Direct link: <a href="${downloadUrl}" target="_blank">test download</a></small>
+            <p>Scan QR – image **downloads instantly** (mobile + desktop).</p>
+            <small>Direct link: <a href="${redirectUrl}" target="_blank">test download</a></small>
           `;
 
           uploadBtn.textContent = 'Upload Another';
