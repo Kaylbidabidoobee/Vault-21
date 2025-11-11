@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Image to QR to Download</title>
+  <title>QR Photo Booth</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
   <style>
@@ -17,8 +17,8 @@
 </head>
 <body>
 
-  <h1>Upload Image to Get QR Code</h1>
-  <p>Scan to download (expires in 5 minutes)</p>
+  <h1>Upload → Get QR</h1>
+  <p>Scan to download (expires in 5 min)</p>
 
   <button id="upload-btn">Upload Image</button>
 
@@ -39,48 +39,53 @@
         {
           cloudName: CLOUD_NAME,
           uploadPreset: UPLOAD_PRESET,
-          sources: ['local', 'camera', 'url'],
+          sources: ['local', 'camera'],
           multiple: false,
           cropping: false,
           folder: 'qr-downloads',
-          clientAllowedFormats: ['png','jpg','jpeg','gif','webp']
+          clientAllowedFormats: ['png','jpg','jpeg']
         },
         (error, result) => {
           if (error) {
-            console.error("Upload failed:", error);
-            alert("Upload failed. Open console (F12) for details.");
+            console.error("Upload error:", error);
+            alert("Upload failed. Check console (F12).");
             return;
           }
-          if (result && result.event === 'success') {
-            const publicId = result.info.public_id;
-            const format   = result.info.format;
-            const version  = result.info.version;
-            const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/v${version}/${publicId}.${format}`;
+          if (!result || result.event !== 'success') return;
 
-            // FIXED: Correct timestamp
-            const expiryTime = Math.floor(Date.now() / 1000) + 300;
-            const safeImg = btoa(imageUrl);
-            const downloadPageUrl = `${SITE_URL}/download.html?i=${safeImg}&exp=${expiryTime}`;
+          const info = result.info;
+          const publicId = info.public_id;
+          const format = info.format;
+          const version = info.version;
 
-            qrDiv.innerHTML = '';
-            new QRCode(qrDiv, {
-              text: downloadPageUrl,
-              width: 256,
-              height: 256,
-              colorDark: "#000",
-              colorLight: "#fff"
-            });
+          // DIRECT, SHORT URL (no Base64)
+          const imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/v${version}/${publicId}.${format}`;
 
-            qrDiv.classList.remove('hidden');
-            resultDiv.classList.remove('hidden');
-            resultDiv.innerHTML = `
-              <p><strong>Uploaded!</strong></p>
-              <p>Scan QR to download</p>
-              <small><a href="${downloadPageUrl}" target="_blank">Open link</a></small>
-            `;
+          // 5-minute expiry timestamp
+          const expiryTime = Math.floor(Date.now() / 1000) + 300;
 
-            uploadBtn.textContent = 'Upload Another';
-          }
+          // Safe URL encoding
+          const downloadPageUrl = `${SITE_URL}/download.html?img=${encodeURIComponent(imageUrl)}&exp=${expiryTime}`;
+
+          // Generate QR
+          qrDiv.innerHTML = '';
+          new QRCode(qrDiv, {
+            text: downloadPageUrl,
+            width: 256,
+            height: 256,
+            colorDark: "#000",
+            colorLight: "#fff"
+          });
+
+          qrDiv.classList.remove('hidden');
+          resultDiv.classList.remove('hidden');
+          resultDiv.innerHTML = `
+            <p><strong>Uploaded!</strong></p>
+            <p>Scan QR to download</p>
+            <small><a href="${downloadPageUrl}" target="_blank">Open in browser</a></small>
+          `;
+
+          uploadBtn.textContent = 'Upload Another';
         }
       );
     };

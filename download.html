@@ -19,7 +19,7 @@
 
   <script>
     const params = new URLSearchParams(location.search);
-    const encodedImg = params.get('i');
+    const imgUrl = params.get('img');
     const expires = params.get('exp');
     const now = Math.floor(Date.now() / 1000);
     const expiryTime = parseInt(expires) || (now + 300);
@@ -27,18 +27,14 @@
     const countdownEl = document.getElementById('countdown');
     const contentEl = document.getElementById('content');
 
-    if (now >= expiryTime) { showExpired(); return; }
-
-    let imgUrl = '';
-    try {
-      imgUrl = encodedImg ? atob(encodedImg) : '';
-    } catch (e) {
-      contentEl.innerHTML = '<p>Invalid link.</p>';
+    // Check expiry
+    if (now >= expiryTime) {
+      showExpired();
       return;
     }
 
     if (!imgUrl) {
-      contentEl.innerHTML = '<p>No image.</p>';
+      contentEl.innerHTML = '<p>No image URL.</p>';
       return;
     }
 
@@ -61,7 +57,7 @@
       contentEl.appendChild(btn);
     };
     img.onerror = () => {
-      contentEl.innerHTML = '<p>Failed to load image.</p>';
+      contentEl.innerHTML = '<p>Failed to load image. <a href="' + imgUrl + '" target="_blank">Try direct link</a></p>';
     };
 
     // Countdown
@@ -80,9 +76,7 @@
     function showExpired() {
       document.body.classList.add('expired');
       countdownEl.textContent = 'Link Expired';
-      contentEl.innerHTML = `<p style="color:#c62828;font-weight:bold;">
-        This link has expired.
-      </p>`;
+      contentEl.innerHTML = '<p style="color:#c62828;font-weight:bold;">This link has expired.</p>';
     }
   </script>
 </body>
