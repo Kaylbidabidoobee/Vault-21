@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>QR Photo Booth</title>
 
-  <!-- QR Code library -->
+  <!-- QR Code -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- Cloudinary Upload Widget -->
-  <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
+
+  <!-- CORRECT CLOUDINARY WIDGET -->
+  <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
 
   <style>
     body {font-family:Arial,sans-serif;max-width:600px;margin:40px auto;padding:20px;text-align:center;background:#f4f4f4;}
@@ -44,7 +45,7 @@
       qrDiv.classList.add('hidden');
       resultDiv.classList.add('hidden');
 
-      // Open Cloudinary widget
+      // This will now work
       cloudinary.openUploadWidget(
         {
           cloudName: CLOUD_NAME,
@@ -57,12 +58,11 @@
         },
         (error, result) => {
           if (error) {
-            console.error('Upload error:', error);
+            console.error(error);
             statusDiv.innerHTML = '<p class="error">Upload failed. Check console.</p>';
             return;
           }
-
-          if (result && result.event === 'success') {
+          if (result?.event === 'success') {
             statusDiv.textContent = 'Generating QR...';
 
             const info = result.info;
@@ -70,25 +70,20 @@
             const format = info.format || 'jpg';
             const version = info.version || Math.floor(Date.now() / 1000);
 
-            // Direct download URL (forces browser download)
             const downloadUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
 
-            // Generate QR Code
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
               text: downloadUrl,
               width: 256,
-              height: 256,
-              colorDark: "#000000",
-              colorLight: "#ffffff"
+              height: 256
             });
 
-            // Show result
             qrDiv.classList.remove('hidden');
             resultDiv.classList.remove('hidden');
             resultDiv.innerHTML = `
               <p><strong>QR Ready!</strong></p>
-              <p>Scan to download image instantly.</p>
+              <p>Scan to download instantly.</p>
               <small><a href="${downloadUrl}" target="_blank">Test Download</a></small>
             `;
 
