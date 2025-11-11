@@ -15,14 +15,12 @@
     .hidden {display:none;}
     .status {margin:10px 0;color:#333;}
     .error {color:red;font-weight:bold;}
-    .countdown {color:#d32f2f;font-weight:bold;margin:10px 0;}
   </style>
 </head>
 <body>
 
   <h1>Upload → Get QR</h1>
-  <p>Scan the QR – the picture <strong>downloads automatically</strong>.</p>
-  <div id="countdown" class="countdown hidden"></div>
+  <p>Scan the QR – the picture <strong>downloads automatically</strong> (expires in 5 min).</p>
 
   <button id="upload-btn">Upload Image</button>
   <div id="status" class="status"></div>
@@ -38,15 +36,11 @@
     const qrDiv     = document.getElementById('qr-code');
     const resultDiv = document.getElementById('result');
     const statusDiv = document.getElementById('status');
-    const countdownDiv = document.getElementById('countdown');
-
-    let expiryTime = 0;
 
     uploadBtn.onclick = () => {
       statusDiv.innerHTML = '<p>Uploading...</p>';
       qrDiv.classList.add('hidden');
       resultDiv.classList.add('hidden');
-      countdownDiv.classList.add('hidden');
 
       cloudinary.openUploadWidget(
         {
@@ -66,7 +60,7 @@
           }
 
           if (result.event === 'success') {
-            statusDiv.innerHTML = '<p>Generating secure QR...</p>';
+            statusDiv.innerHTML = '<p>Generating QR...</p>';
 
             const info = result.info;
             if (!info?.public_id) {
@@ -78,31 +72,13 @@
             const format   = info.format;
             const version  = info.version || Math.floor(Date.now() / 1000);
 
-            // 1. Generate a ONE-TIME, EXPIRING URL
-            expiryTime = Math.floor(Date.now() / 1000) + 300; // 5 min from now
-            const token = btoa(`${publicId}|${expiryTime}|${Math.random()}`).replace(/=/g, '');
-            const downloadUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}?t=${token}&exp=${expiryTime}`;
+            // DIRECT DOWNLOAD URL (fl_attachment BEFORE version)
+            const downloadUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
 
-            // 2. QR points to a tiny inline redirect (no extra file)
-            const redirectUrl = `data:text/html,<script>
-              const url = decodeURIComponent(location.hash.slice(1));
-              const exp = new URL(url).searchParams.get('exp');
-              const now = Math.floor(Date.now() / 1000);
-              if (now > exp) {
-                document.body.innerHTML = '<h3 style=\"color:red\">Link expired.</h3>';
-              } else {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = '';
-                document.body.appendChild(a);
-                a.click();
-              }
-            #${encodeURIComponent(downloadUrl)}`;
-
-            // 3. Generate QR
+            // Generate QR
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
-              text: redirectUrl,
+              text: downloadUrl,
               width: 256,
               height: 256,
               colorDark: "#000",
@@ -114,25 +90,8 @@
             resultDiv.innerHTML = `
               <p><strong>Ready!</strong></p>
               <p>Scan QR – image <strong>downloads instantly</strong>.</p>
-              <small>Link hidden. Expires in 5 min.</small>
+              <small><a href="${downloadUrl}" target="_blank">Test download</a></small>
             `;
-
-            // 4. Show countdown
-            countdownDiv.classList.remove('hidden');
-            let timeLeft = 300;
-            const timer = setInterval(() => {
-              if (timeLeft <= 0) {
-                clearInterval(timer);
-                countdownDiv.textContent = 'QR Expired';
-                qrDiv.innerHTML = '';
-                qrDiv.classList.add('hidden');
-              } else {
-                const m = Math.floor(timeLeft / 60);
-                const s = timeLeft % 60;
-                countdownDiv.textContent = `Expires in: ${m}:${s.toString().padStart(2, '0')}`;
-                timeLeft--;
-              }
-            }, 1000);
 
             statusDiv.innerHTML = '';
             uploadBtn.textContent = 'Upload Another';
