@@ -42,19 +42,14 @@
 
     let expiryTime = 0;
 
-    function xorCrypt(str, key = 42) {
-      return Array.from(str, c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
-    }
-
     uploadBtn.onclick = () => {
-      statusDiv.textContent = 'Opening upload...';
+      statusDiv.textContent = 'Opening uploader...';
       qrDiv.classList.add('hidden');
       resultDiv.classList.add('hidden');
       countdownDiv.classList.add('hidden');
 
-      // Ensure widget is loaded
-      if (!window.cloudinary) {
-        statusDiv.innerHTML = '<p class="error">Widget failed to load. Refresh page.</p>';
+      if (typeof cloudinary === 'undefined') {
+        statusDiv.innerHTML = '<p class="error">Uploader not loaded. Refresh page.</p>';
         return;
       }
 
@@ -70,61 +65,61 @@
         },
         (error, result) => {
           if (error) {
-            statusDiv.innerHTML = `<p class="error">Upload error: ${error.message || 'Try again'}</p>`;
+            statusDiv.innerHTML = `<p class="error">Upload failed: ${error.message || 'Try again'}</p>`;
             return;
           }
 
-          if (result.event === 'success') {
+          if (result && result.event === 'success') {
             statusDiv.textContent = 'Generating QR...';
 
             const info = result.info;
-            if (!info?.public_id) {
+            if (!info || !info.public_id) {
               statusDiv.innerHTML = '<p class="error">No image data.</p>';
               return;
             }
 
             const publicId = info.public_id;
-            const format   = info.format;
+            const format   = info.format || 'jpg';
             const version  = info.version || Math.floor(Date.now() / 1000);
 
             const realUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/v${version}/${publicId}.${format}`;
             expiryTime = Math.floor(Date.now() / 1000) + 300;
 
-            const payload = `${realUrl}|${expiryTime}`;
-            const encrypted = xorCrypt(payload);
+            // Build redirect page using DOM + innerHTML to avoid string bugs
+            const redirectDoc = document.implementation.createHTMLDocument('Download');
+            const body = redirectDoc.body;
+            body.style = 'margin:0;background:#f0f0f0;text-align:center;padding:40px;font-family:Arial;';
+            body.innerHTML = '<h2>Downloading...</h2>';
 
-            const decryptPage = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Download</title></head>
-<body style="margin:0;background:#f0f0f0;text-align:center;padding:40px;font-family:Arial;">
-  <h2>Downloading...</h2>
-  <script>
-    function xorCrypt(str, key = 42) {
-      return Array.from(str, c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
-    }
-    try {
-      const encrypted = decodeURIComponent(location.hash.slice(1));
-      const decrypted = xorCrypt(encrypted);
-      const [url, expStr] = decrypted.split('|');
-      const exp = parseInt(expStr);
-      const now = Math.floor(Date.now() / 1000);
-      if (isNaN(exp) || now > exp) {
-        document.body.innerHTML = '<h3 style="color:red">Link expired.</h3>';
-      } else {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = '';
-        document.body.appendChild(a);
-        a.click();
-      }
-    } catch(e) {
-      document.body.innerHTML = '<h3 style="color:red">Invalid link.</h3>';
-    }
-  </script>
-  #${encodeURIComponent(encrypted)}
-</body></html>`;
+            const script = redirectDoc.createElement('script');
+            script.textContent = `
+              try {
+                const url = decodeURIComponent(location.hash.slice(1));
+                const exp = parseInt(new URL(url).searchParams.get("exp") || "0");
+                const now = Math.floor(Date.now() / 1000);
+                if (now > exp) {
+                  document.body.innerHTML = "<h3 style=\\"color:red\\">Link expired.</h3>";
+                } else {
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "";
+                  document.body.appendChild(a);
+                  a.click();
+                }
+              } catch(e) {
+                document.body.innerHTML = "<h3 style=\\"color:red\\">Invalid link.</h3>";
+              }
+            `;
+            body.appendChild(script);
 
-            const dataUrl = 'data:text/html;base64,' + btoa(decryptPage);
+            // Add hash with real URL + expiry
+            redirectDoc.location.hash = encodeURIComponent(realUrl + '?exp=' + expiryTime);
 
+            // Serialize to string
+            const redirectHTML = '<!DOCTYPE html>' + redirectDoc.documentElement.outerHTML;
+            const dataUrl = 'data:text/html;base64,' + btoa(redirectHTML);
+
+            // Generate QR
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
               text: dataUrl,
@@ -139,7 +134,7 @@
             resultDiv.innerHTML = `
               <p><strong>Ready!</strong></p>
               <p>Scan QR – image <strong>downloads instantly</strong>.</p>
-              <small>Link encrypted. Expires in 5 min.</small>
+              <small>Link hidden. Expires in 5 min.</small>
             `;
 
             countdownDiv.classList.remove('hidden');
@@ -167,4 +162,4 @@
   </script>
 
 </body>
-              </html>
+</html>
