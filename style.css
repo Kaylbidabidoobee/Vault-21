@@ -1,0 +1,21 @@
+/* Reset */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    height: 100%;
+    width: 100%;
+    font-family: Arial, sans-serif;
+}
+
+/* Default: mobile background */
+body {
+    background-image: url("/images/background.jpeg"); /* <-- YOU PUT YOUR MOBILE IMAGE */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Desktop-landscape class (activated by JS) */
+.desktop-landscape {
+    background-image: url("DESKTOP-IMAGE.jpg") !important; /* <-- YOU PUT DESKTOP IMAGE */
+}
