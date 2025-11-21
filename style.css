@@ -9,7 +9,7 @@ html, body {
 
 /* Default: mobile background */
 body {
-    background-image: url("_background.jpeg"); /* <-- YOU PUT YOUR MOBILE IMAGE */
+    background-image: url("background.jpeg"); /* <-- YOU PUT YOUR MOBILE IMAGE */
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -17,5 +17,5 @@ body {
 
 /* Desktop-landscape class (activated by JS) */
 .desktop-landscape {
-    background-image: url("DESKTOP-IMAGE.jpg") !important; /* <-- YOU PUT DESKTOP IMAGE */
+    background-image: url("DESKTOP-IMAGE.jpg"); /* <-- YOU PUT DESKTOP IMAGE */
 }
