@@ -9,7 +9,7 @@ html, body {
 
 /* Default: mobile background */
 body {
-    background-image: url("Vault-21/background.jpeg"); /* <-- YOU PUT YOUR MOBILE IMAGE */
+    background-image: url("background.jpeg"); /* <-- YOU PUT YOUR MOBILE IMAGE */
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
